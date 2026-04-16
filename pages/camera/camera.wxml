@@ -1,0 +1,238 @@
+<!--pages/camera/camera.wxml - 原生相机风格UI + 完整参考图功能（3:4比例） -->
+<view class="camera-page">
+  <!-- 相机组件（3:4比例） -->
+  <view class="camera-wrapper">
+    <camera
+      id="mainCamera"
+      class="camera"
+      mode="normal"
+      device-position="{{cameraPosition}}"
+      flash="{{flashMode}}"
+      zoom="{{actualZoom}}"
+      resolution="high"
+      frame-size="large"
+      bindinitdone="onCameraInitDone"
+      binderror="onCameraError"
+    ></camera>
+  </view>
+
+  <!-- 对焦框 -->
+  <view class="focus-box" wx:if="{{showFocusBox}}" style="top: {{focusY}}px; left: {{focusX}}px;">
+    <view class="box-corner tl"></view>
+    <view class="box-corner tr"></view>
+    <view class="box-corner bl"></view>
+    <view class="box-corner br"></view>
+  </view>
+
+  <!-- 九宫格辅助线（三分法：2横2竖，共4条线） -->
+  <view class="grid-overlay" wx:if="{{showGridLines}}">
+    <view class="grid-line horizontal" style="top: 33.33%"></view>
+    <view class="grid-line horizontal" style="top: 66.66%"></view>
+    <view class="grid-line vertical" style="left: 33.33%"></view>
+    <view class="grid-line vertical" style="left: 66.66%"></view>
+  </view>
+
+  <!-- 参考图叠加层 -->
+  <view
+    class="reference-layer"
+    wx:if="{{referenceImage && showReference}}"
+    style="opacity: {{referenceOpacity}}"
+    catchtouchstart="onReferenceTouchStart"
+    catchtouchmove="onReferenceTouchMove"
+    catchtouchend="onReferenceTouchEnd"
+  >
+    <image
+      class="reference-image"
+      src="{{referenceImage}}"
+      mode="aspectFit"
+      style="transform: translate({{refOffsetX}}px, {{refOffsetY}}px) scale({{refScale}})"
+    ></image>
+  </view>
+
+  <!-- ==================== 顶部工具栏 ==================== -->
+  <view class="top-bar">
+    <!-- 顶部栏占位 -->
+  </view>
+
+  <!-- ==================== 右侧控制面板 ==================== -->
+  <view class="right-controls">
+    <!-- 翻转相机 -->
+    <view class="right-btn switch-camera-btn" bindtap="switchCamera">
+      <text class="switch-icon">⟳</text>
+      <text class="right-label">翻转</text>
+    </view>
+
+    <!-- 闪光灯 -->
+    <view class="right-btn {{flashMode === 'on' ? 'active' : ''}}" bindtap="toggleFlash">
+      <text>⚡</text>
+      <text class="right-label">{{flashModeText}}</text>
+    </view>
+
+    <!-- 参考图控制（有参考图时显示） -->
+    <block wx:if="{{referenceImage}}">
+      <!-- 显示/隐藏 -->
+      <view class="right-btn {{showReference ? 'active' : ''}}" bindtap="toggleReference">
+        <text>{{showReference ? '🙈' : '👁️'}}</text>
+        <text class="right-label">{{showReference ? '隐藏' : '显示'}}</text>
+      </view>
+      <!-- 换图 -->
+      <view class="right-btn" bindtap="showUploadOptions">
+        <text>🔄</text>
+        <text class="right-label">换图</text>
+      </view>
+      <!-- 透明度 -->
+      <view class="right-btn opacity-btn" bindtap="toggleTransparencyPanel">
+        <text class="opacity-value">{{transparencyPercent}}%</text>
+        <text class="right-label">透明度</text>
+      </view>
+      <!-- 删除 -->
+      <view class="right-btn danger" bindtap="removeReference">
+        <text>🗑️</text>
+        <text class="right-label">删除</text>
+      </view>
+    </block>
+  </view>
+
+  <!-- 缩放提示 -->
+  <view class="zoom-indicator" wx:if="{{zoomLevel > 1}}">
+    <text>{{zoomLevel}}x</text>
+  </view>
+
+  <!-- ==================== 无参考图时的引导提示 ==================== -->
+  <view class="upload-guide" wx:if="{{!referenceImage}}">
+    <view class="guide-content" bindtap="showUploadOptions">
+      <text class="guide-icon">📷</text>
+      <text class="guide-title">上传想要模仿的照片</text>
+      <text class="guide-desc">从小红书截图或相册选择参考图，透明叠在取景框上</text>
+      <view class="guide-btn">
+        <text>点击上传参考图</text>
+        <text class="guide-arrow">→</text>
+      </view>
+    </view>
+  </view>
+
+  <!-- ==================== 底部控制栏 ==================== -->
+  <view class="bottom-bar">
+    <!-- 左侧：上传参考图 或 相册预览 -->
+    <block wx:if="{{referenceImage}}">
+      <view class="album-btn ref-preview" bindtap="toggleTransparencyPanel">
+        <image
+          src="{{referenceImage}}"
+          mode="aspectFill"
+          class="album-thumb ref-thumb"
+        />
+        <view class="ref-badge">
+          <text>{{transparencyPercent}}%</text>
+        </view>
+      </view>
+    </block>
+    <block wx:else>
+      <view class="upload-main-btn" bindtap="showUploadOptions">
+        <text class="upload-icon">⬆️</text>
+        <text class="upload-text">上传参考图</text>
+      </view>
+    </block>
+
+    <!-- 中间：倍数切换器 + 快门按钮 -->
+    <view class="center-column">
+      <!-- 倍数切换器（苹果风格） -->
+      <view class="zoom-selector">
+        <text
+          wx:for="{{zoomLevels}}"
+          wx:key="*this"
+          class="zoom-item {{zoomLevel == item ? 'active' : ''}}"
+          data-zoom="{{item}}"
+          bindtap="onZoomTap"
+        >{{item}}x</text>
+      </view>
+      <!-- 快门按钮 -->
+      <view class="shutter-wrapper" bindtap="onTakePhoto">
+        <view class="shutter-outer">
+          <view class="shutter-inner"></view>
+        </view>
+      </view>
+    </view>
+
+    <!-- 右侧：网格线开关 -->
+    <view class="more-options" bindtap="toggleGrid">
+      <view class="option-icon {{showGridLines ? 'active' : ''}}">
+        <text>⊞</text>
+      </view>
+      <text class="option-label">{{showGridLines ? '网格开' : '网格关'}}</text>
+    </view>
+  </view>
+
+  <!-- ==================== 上传参考图选项弹窗 ==================== -->
+  <view class="select-popup {{showSelectPopup ? 'visible' : ''}}" bindtap="hideSelectPopup">
+    <view class="popup-content select-panel" catchtap="noop">
+      <view class="select-header">选择参考图</view>
+      <view class="select-option" data-type="album" catchtap="onSelectOption">
+        <text class="opt-icon">🖼️</text>
+        <text class="opt-text">从相册选择</text>
+        <text class="opt-desc">选择小红书截图或照片</text>
+      </view>
+      <view class="select-option" data-type="camera" catchtap="onSelectOption">
+        <text class="opt-icon">📸</text>
+        <text class="opt-text">拍摄参考图</text>
+        <text class="opt-desc">拍一张想模仿的照片</text>
+      </view>
+      <view class="select-cancel" catchtap="hideSelectPopup">取消</view>
+    </view>
+  </view>
+
+  <!-- ==================== 透明度调节面板 ==================== -->
+  <view class="transparency-popup {{showTransparencyPanel ? 'visible' : ''}}" bindtap="hideTransparencyPanel">
+    <view class="popup-content transparency-panel-content" catchtap="noop">
+      <view class="tp-header">
+        <text class="tp-title">参考图透明度</text>
+        <text class="tp-value">{{transparencyPercent}}%</text>
+      </view>
+
+      <view class="ref-preview-mini" wx:if="{{referenceImage}}">
+        <image src="{{referenceImage}}" mode="aspectFill" />
+      </view>
+
+      <view class="slider-container">
+        <slider
+          min="10"
+          max="90"
+          value="{{transparencyPercent}}"
+          block-size="24"
+          activeColor="#FF6B6B"
+          backgroundColor="#333333"
+          show-value="{{false}}"
+          bindchange="onTransparencyChange"
+        />
+      </view>
+
+      <view class="preset-row">
+        <view
+          class="preset-item {{item == transparencyPercent ? 'active' : ''}}"
+          wx:for="{{presets}}"
+          wx:key="*this"
+          data-value="{{item}}"
+          catchtap="setTransparencyPreset"
+        >
+          <text>{{item}}%</text>
+        </view>
+      </view>
+
+      <view class="tp-actions-row">
+        <view class="tp-action-btn" catchtap="resetReference">
+          <text>🔄</text>
+          <text>重置位置</text>
+        </view>
+        <view class="tp-action-btn" catchtap="fitToScreen">
+          <text>⬜</text>
+          <text>适应屏幕</text>
+        </view>
+        <view class="tp-action-btn danger" catchtap="onDeleteReference">
+          <text>🗑️</text>
+          <text>删除图片</text>
+        </view>
+      </view>
+
+      <view class="tp-close" catchtap="hideTransparencyPanel">完成</view>
+    </view>
+  </view>
+</view>

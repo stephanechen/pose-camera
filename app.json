@@ -1,0 +1,21 @@
+{
+  "pages": [
+    "pages/camera/camera",
+    "pages/preview/preview"
+  ],
+  "entryPagePath": "pages/camera/camera",
+  "window": {
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#000000",
+    "navigationBarTitleText": "",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#000000",
+    "navigationStyle": "custom"
+  },
+  "requiredBackgroundModes": [],
+  "networkTimeout": {
+    "request": 10000,
+    "downloadFile": 10000
+  },
+  "lazyCodeLoading": "requiredComponents"
+}
