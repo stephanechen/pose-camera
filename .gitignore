@@ -3,6 +3,8 @@
 # ====================
 *.lnk
 Thumbs.db
+thumb.db
+Thumb.db
 autorun.inf
 Desktop.ini
 ehthumbs.db
